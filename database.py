@@ -6,16 +6,34 @@ from datetime import datetime
 # Detect environment and choose database
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
+print(f"🔍 DATABASE_URL detected: {'YES' if DATABASE_URL else 'NO'}")
+
 if DATABASE_URL:
     # Production: PostgreSQL
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        POSTGRES_AVAILABLE = True
+        print("✅ psycopg2 imported successfully")
+    except ImportError as e:
+        POSTGRES_AVAILABLE = False
+        print(f"❌ psycopg2 import failed: {e}")
     
     def get_connection():
-        return psycopg2.connect(DATABASE_URL)
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            print("✅ PostgreSQL connection successful")
+            return conn
+        except Exception as e:
+            print(f"❌ PostgreSQL connection failed: {e}")
+            raise
     
     def init_db():
         """Create trips table if it doesn't exist (PostgreSQL)"""
+        if not POSTGRES_AVAILABLE:
+            print("⚠️  PostgreSQL not available, skipping init")
+            return
+        
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -39,8 +57,12 @@ if DATABASE_URL:
         except Exception as e:
             print(f"❌ Database init error: {e}")
     
-    def save_trip(user_id: str, trip_data: dict) -> int:
+    def save_trip(user_id: str, trip_ dict) -> int:
         """Save a trip and return its ID (PostgreSQL)"""
+        if not POSTGRES_AVAILABLE:
+            print("⚠️  PostgreSQL not available")
+            return -1
+        
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -62,6 +84,7 @@ if DATABASE_URL:
             conn.commit()
             conn.close()
             
+            print(f"✅ Trip saved successfully with ID: {trip_id}")
             return trip_id
         except Exception as e:
             print(f"❌ Database save error: {e}")
@@ -69,6 +92,9 @@ if DATABASE_URL:
     
     def get_user_trips(user_id: str) -> list:
         """Retrieve all trips for a user (PostgreSQL)"""
+        if not POSTGRES_AVAILABLE:
+            return []
+        
         try:
             conn = get_connection()
             cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -90,6 +116,7 @@ if DATABASE_URL:
                     "created_at": row["created_at"].strftime('%Y-%m-%d %H:%M') if row["created_at"] else ""
                 })
             
+            print(f"✅ Retrieved {len(trips)} trips for user {user_id}")
             return trips
         except Exception as e:
             print(f"❌ Database fetch error: {e}")
@@ -129,7 +156,7 @@ else:
         except Exception as e:
             print(f"❌ Database init error: {e}")
     
-    def save_trip(user_id: str, trip_data: dict) -> int:
+    def save_trip(user_id: str, trip_ dict) -> int:
         """Save a trip and return its ID (SQLite)"""
         try:
             conn = get_connection()
@@ -151,6 +178,7 @@ else:
             conn.commit()
             conn.close()
             
+            print(f"✅ Trip saved successfully with ID: {trip_id}")
             return trip_id
         except Exception as e:
             print(f"❌ Database save error: {e}")
@@ -179,6 +207,7 @@ else:
                     "created_at": row[7]
                 })
             
+            print(f"✅ Retrieved {len(trips)} trips for user {user_id}")
             return trips
         except Exception as e:
             print(f"❌ Database fetch error: {e}")
