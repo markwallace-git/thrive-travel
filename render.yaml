@@ -1,0 +1,12 @@
+# render.yaml
+services:
+  - type: web
+    name: thrive-travel
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: OPENWEATHER_API_KEY
+        sync: false

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Thrive Travel Planner</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Thrive</h1>
+            <p>Your Autonomous AI Travel Operator</p>
+        </header>
+        
+        <div class="chat-box" id="chatBox">
+            <div class="message bot">
+                <div class="bubble">
+                    Hello! I'm Thrive. Where would you like to travel? 🌍
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Type your message..." autocomplete="off">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const userInput = document.getElementById('userInput');
+
+        // Send message on Enter key
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            userInput.value = '';
+
+            // Show loading state
+            const loadingId = addMessage('Thinking...', 'bot loading');
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                
+                // Remove loading message
+                document.getElementById(loadingId).remove();
+
+                if (data.success) {
+                    addMessage(data.message, 'bot');
+                } else {
+                    addMessage('Error: ' + data.error, 'bot error');
+                }
+            } catch (error) {
+                document.getElementById(loadingId).remove();
+                addMessage('Connection error. Please try again.', 'bot error');
+            }
+        }
+
+        function addMessage(text, type) {
+            const id = 'msg-' + Date.now();
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.id = id;
+            div.innerHTML = `<div class="bubble">${text.replace(/\n/g, '<br>')}</div>`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return id;
+        }
+    </script>
+</body>
+</html>
