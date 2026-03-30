@@ -9,79 +9,95 @@ import io
 def generate_itinerary_pdf(trip_data: dict) -> bytes:
     """Generate a PDF itinerary from trip data"""
     
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
-    styles = getSampleStyleSheet()
-    
-    # Custom styles
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#667eea'),
-        spaceAfter=30
-    )
-    
-    # Build content
-    content = []
-    
-    # Title
-    destination = trip_data.get('destination', 'Your Trip')
-    content.append(Paragraph(f"Thrive Travel: {destination}", title_style))
-    content.append(Spacer(1, 12))
-    
-    # Trip Details
-    details = [
-        ['Destination:', trip_data.get('destination', 'N/A')],
-        ['Duration:', trip_data.get('duration', 'N/A')],
-        ['Budget:', trip_data.get('budget', 'N/A')],
-        ['Preferences:', ', '.join(trip_data.get('preferences', []))],
-        ['Generated:', datetime.now().strftime('%Y-%m-%d %H:%M')]
-    ]
-    
-    details_table = Table(details, colWidths=[150, 250])
-    details_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-    ]))
-    content.append(details_table)
-    content.append(Spacer(1, 30))
-    
-    # Itinerary
-    content.append(Paragraph("Your Itinerary", styles['Heading2']))
-    content.append(Spacer(1, 12))
-    
-    for day in trip_data.get('itinerary', []):
-        day_num = day.get('day', 0)
-        content.append(Paragraph(f"<b>Day {day_num}</b>", styles['Heading3']))
+    try:
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
         
-        # Weather if available
-        if 'weather' in day:
-            content.append(Paragraph(f"{day['weather']}", styles['Normal']))
+        # Custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#667eea'),
+            spaceAfter=30
+        )
         
-        # Activities
-        for activity in day.get('activities', []):
-            content.append(Paragraph(f"- {activity}", styles['Normal']))
+        # Build content
+        content = []
         
-        content.append(Spacer(1, 15))
+        # Title
+        destination = trip_data.get('destination', 'Your Trip')
+        content.append(Paragraph(f"Thrive Travel: {destination}", title_style))
+        content.append(Spacer(1, 12))
+        
+        # Trip Details
+        preferences = trip_data.get('preferences', [])
+        if isinstance(preferences, str):
+            import json
+            preferences = json.loads(preferences)
+        
+        details = [
+            ['Destination:', str(trip_data.get('destination', 'N/A'))],
+            ['Duration:', str(trip_data.get('duration', 'N/A'))],
+            ['Budget:', str(trip_data.get('budget', 'N/A'))],
+            ['Preferences:', ', '.join(preferences) if preferences else 'N/A'],
+            ['Generated:', datetime.now().strftime('%Y-%m-%d %H:%M')]
+        ]
+        
+        details_table = Table(details, colWidths=[150, 250])
+        details_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        content.append(details_table)
+        content.append(Spacer(1, 30))
+        
+        # Itinerary
+        content.append(Paragraph("Your Itinerary", styles['Heading2']))
+        content.append(Spacer(1, 12))
+        
+        itinerary = trip_data.get('itinerary', [])
+        if isinstance(itinerary, str):
+            import json
+            itinerary = json.loads(itinerary)
+        
+        for day in itinerary:
+            day_num = day.get('day', 0)
+            content.append(Paragraph(f"<b>Day {day_num}</b>", styles['Heading3']))
+            
+            # Weather if available
+            if 'weather' in day:
+                content.append(Paragraph(f"{day['weather']}", styles['Normal']))
+            
+            # Activities
+            activities = day.get('activities', [])
+            for activity in activities:
+                content.append(Paragraph(f"- {activity}", styles['Normal']))
+            
+            content.append(Spacer(1, 15))
+        
+        # Footer
+        content.append(Spacer(1, 30))
+        content.append(Paragraph(
+            "<i>Generated by Thrive AI Travel Operator</i>",
+            styles['Normal']
+        ))
+        
+        # Build PDF
+        doc.build(content)
+        
+        # Get bytes
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+        
+        return pdf_bytes
     
-    # Footer
-    content.append(Spacer(1, 30))
-    content.append(Paragraph(
-        "<i>Generated by Thrive AI Travel Operator</i>",
-        styles['Normal']
-    ))
-    
-    # Build PDF
-    doc.build(content)
-    
-    # Get bytes
-    pdf_bytes = buffer.getvalue()
-    buffer.close()
-    
-    return pdf_bytes
+    except Exception as e:
+        print(f"PDF Generation Error: {str(e)}")
+        raise
