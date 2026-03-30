@@ -20,6 +20,12 @@
                 </div>
             </div>
         </div>
+        <!-- Add this button below the chat box, before input-area -->
+<div class="export-area" id="exportArea" style="display: none; padding: 15px; text-align: center;">
+    <button onclick="exportPDF()" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 20px; cursor: pointer;">
+        📄 Download Itinerary as PDF
+    </button>
+</div>
         
         <div class="input-area">
             <input type="text" id="userInput" placeholder="Type your message..." autocomplete="off">
@@ -28,6 +34,7 @@
     </div>
 
     <script>
+        let currentTripId = null;
         const chatBox = document.getElementById('chatBox');
         const userInput = document.getElementById('userInput');
 
@@ -59,8 +66,15 @@
                 // Remove loading message
                 document.getElementById(loadingId).remove();
 
-                if (data.success) {
-                    addMessage(data.message, 'bot');
+              if (data.success) {
+    addMessage(data.message, 'bot');
+    
+    // Extract Trip ID from message if present
+    const tripIdMatch = data.message.match(/Trip ID: #(\d+)/);
+    if (tripIdMatch) {
+        currentTripId = tripIdMatch[1];
+        document.getElementById('exportArea').style.display = 'block';
+    }
                 } else {
                     addMessage('Error: ' + data.error, 'bot error');
                 }
@@ -80,6 +94,34 @@
             chatBox.scrollTop = chatBox.scrollHeight;
             return id;
         }
+        // Add to the <script> section in index.html
+
+
+function exportPDF() {
+    if (!currentTripId) return;
+    
+    fetch('/api/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip_id: currentTripId })
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('Failed to generate PDF');
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `thrive-trip-${currentTripId}.pdf`;
+        a.click();
+    })
+    .catch(error => {
+        alert('Error generating PDF: ' + error.message);
+    });
+}
     </script>
 </body>
 </html>
