@@ -1,86 +1,185 @@
 # database.py
-import sqlite3
+import os
 import json
 from datetime import datetime
 
-DB_NAME = "thrive_trips.db"
+# Detect environment and choose database
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-def init_db():
-    """Create trips table if it doesn't exist"""
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS trips (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                destination TEXT NOT NULL,
-                duration TEXT NOT NULL,
-                budget TEXT,
-                preferences TEXT,
-                itinerary TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
-        print("✅ Database initialized.")
-    except Exception as e:
-        print(f"❌ Database init error: {e}")
+if DATABASE_URL:
+    # Production: PostgreSQL
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    
+    def get_connection():
+        return psycopg2.connect(DATABASE_URL)
+    
+    def init_db():
+        """Create trips table if it doesn't exist (PostgreSQL)"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS trips (
+                    id SERIAL PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    destination TEXT NOT NULL,
+                    duration TEXT NOT NULL,
+                    budget TEXT,
+                    preferences JSONB,
+                    itinerary JSONB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            print("✅ PostgreSQL database initialized.")
+        except Exception as e:
+            print(f"❌ Database init error: {e}")
+    
+    def save_trip(user_id: str, trip_data: dict) -> int:
+        """Save a trip and return its ID (PostgreSQL)"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO trips (user_id, destination, duration, budget, preferences, itinerary)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (
+                user_id,
+                trip_data.get("destination", ""),
+                trip_data.get("duration", ""),
+                trip_data.get("budget", ""),
+                json.dumps(trip_data.get("preferences", [])),
+                json.dumps(trip_data.get("itinerary", []))
+            ))
+            
+            trip_id = cursor.fetchone()[0]
+            conn.commit()
+            conn.close()
+            
+            return trip_id
+        except Exception as e:
+            print(f"❌ Database save error: {e}")
+            return -1
+    
+    def get_user_trips(user_id: str) -> list:
+        """Retrieve all trips for a user (PostgreSQL)"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute('SELECT * FROM trips WHERE user_id = %s ORDER BY created_at DESC', (user_id,))
+            rows = cursor.fetchall()
+            conn.close()
+            
+            trips = []
+            for row in rows:
+                trips.append({
+                    "id": row["id"],
+                    "user_id": row["user_id"],
+                    "destination": row["destination"],
+                    "duration": row["duration"],
+                    "budget": row["budget"],
+                    "preferences": row["preferences"] if isinstance(row["preferences"], list) else json.loads(row["preferences"]),
+                    "itinerary": row["itinerary"] if isinstance(row["itinerary"], list) else json.loads(row["itinerary"]),
+                    "created_at": row["created_at"].strftime('%Y-%m-%d %H:%M') if row["created_at"] else ""
+                })
+            
+            return trips
+        except Exception as e:
+            print(f"❌ Database fetch error: {e}")
+            return []
 
-def save_trip(user_id: str, trip_data: dict) -> int:
-    """Save a trip and return its ID"""
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT INTO trips (user_id, destination, duration, budget, preferences, itinerary)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            user_id,
-            trip_data.get("destination", ""),
-            trip_data.get("duration", ""),
-            trip_data.get("budget", ""),
-            json.dumps(trip_data.get("preferences", [])),
-            json.dumps(trip_data.get("itinerary", []))
-        ))
-        
-        trip_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
-        return trip_id
-    except Exception as e:
-        print(f"❌ Database save error: {e}")
-        return -1
-
-def get_user_trips(user_id: str) -> list:
-    """Retrieve all trips for a user"""
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT * FROM trips WHERE user_id = ? ORDER BY created_at DESC', (user_id,))
-        rows = cursor.fetchall()
-        conn.close()
-        
-        trips = []
-        for row in rows:
-            trips.append({
-                "id": row[0],
-                "user_id": row[1],
-                "destination": row[2],
-                "duration": row[3],
-                "budget": row[4],
-                "preferences": json.loads(row[5]),
-                "itinerary": json.loads(row[6]),
-                "created_at": row[7]
-            })
-        
-        return trips
-    except Exception as e:
-        print(f"❌ Database fetch error: {e}")
-        return []
+else:
+    # Development: SQLite
+    import sqlite3
+    
+    DB_NAME = "thrive_trips.db"
+    
+    def get_connection():
+        return sqlite3.connect(DB_NAME)
+    
+    def init_db():
+        """Create trips table if it doesn't exist (SQLite)"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS trips (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    destination TEXT NOT NULL,
+                    duration TEXT NOT NULL,
+                    budget TEXT,
+                    preferences TEXT,
+                    itinerary TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            print("✅ SQLite database initialized.")
+        except Exception as e:
+            print(f"❌ Database init error: {e}")
+    
+    def save_trip(user_id: str, trip_data: dict) -> int:
+        """Save a trip and return its ID (SQLite)"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO trips (user_id, destination, duration, budget, preferences, itinerary)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                user_id,
+                trip_data.get("destination", ""),
+                trip_data.get("duration", ""),
+                trip_data.get("budget", ""),
+                json.dumps(trip_data.get("preferences", [])),
+                json.dumps(trip_data.get("itinerary", []))
+            ))
+            
+            trip_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            
+            return trip_id
+        except Exception as e:
+            print(f"❌ Database save error: {e}")
+            return -1
+    
+    def get_user_trips(user_id: str) -> list:
+        """Retrieve all trips for a user (SQLite)"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT * FROM trips WHERE user_id = ? ORDER BY created_at DESC', (user_id,))
+            rows = cursor.fetchall()
+            conn.close()
+            
+            trips = []
+            for row in rows:
+                trips.append({
+                    "id": row[0],
+                    "user_id": row[1],
+                    "destination": row[2],
+                    "duration": row[3],
+                    "budget": row[4],
+                    "preferences": json.loads(row[5]),
+                    "itinerary": json.loads(row[6]),
+                    "created_at": row[7]
+                })
+            
+            return trips
+        except Exception as e:
+            print(f"❌ Database fetch error: {e}")
+            return []
