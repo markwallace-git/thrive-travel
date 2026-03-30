@@ -6,7 +6,7 @@ from datetime import datetime
 # Detect environment and choose database
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-print(f"🔍 DATABASE_URL detected: {'YES' if DATABASE_URL else 'NO'}")
+print(f"DATABASE_URL detected: {'YES' if DATABASE_URL else 'NO'}")
 
 if DATABASE_URL:
     # Production: PostgreSQL
@@ -14,24 +14,24 @@ if DATABASE_URL:
         import psycopg2
         from psycopg2.extras import RealDictCursor
         POSTGRES_AVAILABLE = True
-        print("✅ psycopg2 imported successfully")
+        print("psycopg2 imported successfully")
     except ImportError as e:
         POSTGRES_AVAILABLE = False
-        print(f"❌ psycopg2 import failed: {e}")
+        print(f"psycopg2 import failed: {e}")
     
     def get_connection():
         try:
             conn = psycopg2.connect(DATABASE_URL)
-            print("✅ PostgreSQL connection successful")
+            print("PostgreSQL connection successful")
             return conn
         except Exception as e:
-            print(f"❌ PostgreSQL connection failed: {e}")
+            print(f"PostgreSQL connection failed: {e}")
             raise
     
     def init_db():
         """Create trips table if it doesn't exist (PostgreSQL)"""
         if not POSTGRES_AVAILABLE:
-            print("⚠️  PostgreSQL not available, skipping init")
+            print("PostgreSQL not available, skipping init")
             return
         
         try:
@@ -53,14 +53,14 @@ if DATABASE_URL:
             
             conn.commit()
             conn.close()
-            print("✅ PostgreSQL database initialized.")
+            print("PostgreSQL database initialized.")
         except Exception as e:
-            print(f"❌ Database init error: {e}")
+            print(f"Database init error: {e}")
     
-    def save_trip(user_id: str, trip_ dict) -> int:
+    def save_trip(user_id: str, trip_data: dict) -> int:
         """Save a trip and return its ID (PostgreSQL)"""
         if not POSTGRES_AVAILABLE:
-            print("⚠️  PostgreSQL not available")
+            print("PostgreSQL not available")
             return -1
         
         try:
@@ -84,10 +84,10 @@ if DATABASE_URL:
             conn.commit()
             conn.close()
             
-            print(f"✅ Trip saved successfully with ID: {trip_id}")
+            print(f"Trip saved successfully with ID: {trip_id}")
             return trip_id
         except Exception as e:
-            print(f"❌ Database save error: {e}")
+            print(f"Database save error: {e}")
             return -1
     
     def get_user_trips(user_id: str) -> list:
@@ -116,10 +116,10 @@ if DATABASE_URL:
                     "created_at": row["created_at"].strftime('%Y-%m-%d %H:%M') if row["created_at"] else ""
                 })
             
-            print(f"✅ Retrieved {len(trips)} trips for user {user_id}")
+            print(f"Retrieved {len(trips)} trips for user {user_id}")
             return trips
         except Exception as e:
-            print(f"❌ Database fetch error: {e}")
+            print(f"Database fetch error: {e}")
             return []
 
 else:
@@ -152,11 +152,11 @@ else:
             
             conn.commit()
             conn.close()
-            print("✅ SQLite database initialized.")
+            print("SQLite database initialized.")
         except Exception as e:
-            print(f"❌ Database init error: {e}")
+            print(f"Database init error: {e}")
     
-    def save_trip(user_id: str, trip_ dict) -> int:
+    def save_trip(user_id: str, trip_data: dict) -> int:
         """Save a trip and return its ID (SQLite)"""
         try:
             conn = get_connection()
@@ -178,10 +178,10 @@ else:
             conn.commit()
             conn.close()
             
-            print(f"✅ Trip saved successfully with ID: {trip_id}")
+            print(f"Trip saved successfully with ID: {trip_id}")
             return trip_id
         except Exception as e:
-            print(f"❌ Database save error: {e}")
+            print(f"Database save error: {e}")
             return -1
     
     def get_user_trips(user_id: str) -> list:
@@ -207,8 +207,8 @@ else:
                     "created_at": row[7]
                 })
             
-            print(f"✅ Retrieved {len(trips)} trips for user {user_id}")
+            print(f"Retrieved {len(trips)} trips for user {user_id}")
             return trips
         except Exception as e:
-            print(f"❌ Database fetch error: {e}")
+            print(f"Database fetch error: {e}")
             return []
