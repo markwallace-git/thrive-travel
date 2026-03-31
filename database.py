@@ -8,23 +8,21 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 
 print(f"=== DATABASE DEBUG ===")
 print(f"DATABASE_URL detected: {'YES' if DATABASE_URL else 'NO'}")
-if DATABASE_URL:
-    print(f"DATABASE_URL starts with: {DATABASE_URL[:30]}...")
 
 if DATABASE_URL:
-    # Production: PostgreSQL
+    # Production: PostgreSQL with psycopg v3
     try:
-        import psycopg2
-        from psycopg2.extras import RealDictCursor
+        import psycopg
+        from psycopg.rows import dict_row
         POSTGRES_AVAILABLE = True
-        print("psycopg2 imported: SUCCESS")
+        print("psycopg imported: SUCCESS")
     except ImportError as e:
         POSTGRES_AVAILABLE = False
-        print(f"psycopg2 import: FAILED - {e}")
+        print(f"psycopg import: FAILED - {e}")
     
     def get_connection():
         try:
-            conn = psycopg2.connect(DATABASE_URL)
+            conn = psycopg.connect(DATABASE_URL)
             print("PostgreSQL connection: SUCCESS")
             return conn
         except Exception as e:
@@ -60,7 +58,7 @@ if DATABASE_URL:
         except Exception as e:
             print(f"PostgreSQL table init: FAILED - {e}")
     
-    def save_trip(user_id: str, trip_data: dict) -> int:
+    def save_trip(user_id: str, trip_ dict) -> int:
         """Save a trip and return its ID (PostgreSQL)"""
         if not POSTGRES_AVAILABLE:
             print("PostgreSQL not available for save")
@@ -103,7 +101,7 @@ if DATABASE_URL:
         
         try:
             conn = get_connection()
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor = conn.cursor(row_factory=dict_row)
             
             cursor.execute('SELECT * FROM trips WHERE user_id = %s ORDER BY created_at DESC', (user_id,))
             rows = cursor.fetchall()
@@ -168,7 +166,7 @@ else:
         except Exception as e:
             print(f"SQLite table init: FAILED - {e}")
     
-    def save_trip(user_id: str, trip_data: dict) -> int:
+    def save_trip(user_id: str, trip_ dict) -> int:
         """Save a trip and return its ID (SQLite)"""
         try:
             conn = get_connection()
