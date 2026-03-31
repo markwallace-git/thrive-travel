@@ -128,3 +128,37 @@ header p {
 .input-area button:hover {
     transform: scale(1.05);
 }
+.trip-history {
+    background: white;
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.trip-history h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #667eea;
+}
+
+.trip-item {
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.trip-item:hover {
+    background: #e9ecef;
+}
+
+.trip-item strong {
+    color: #333;
+}
+
+.trip-item small {
+    color: #666;
+}

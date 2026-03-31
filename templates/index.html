@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 Thrive Travel Planner</title>
+    <title>Thrive Travel Planner</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -13,6 +13,12 @@
             <p>Your Autonomous AI Travel Operator</p>
         </header>
         
+        <!-- Trip History Panel -->
+        <div class="trip-history" id="tripHistory">
+            <h3>📚 Your Saved Trips</h3>
+            <div id="tripList">Loading...</div>
+        </div>
+        
         <div class="chat-box" id="chatBox">
             <div class="message bot">
                 <div class="bubble">
@@ -20,12 +26,13 @@
                 </div>
             </div>
         </div>
-        <!-- Add this button below the chat box, before input-area -->
-<div class="export-area" id="exportArea" style="display: none; padding: 15px; text-align: center;">
-    <button onclick="exportPDF()" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 20px; cursor: pointer;">
-        📄 Download Itinerary as PDF
-    </button>
-</div>
+        
+        <!-- Export Button -->
+        <div class="export-area" id="exportArea" style="display: none; padding: 15px; text-align: center; background: #f8f9fa; border-top: 1px solid #e9ecef;">
+            <button onclick="exportPDF()" style="background: #28a745; color: white; padding: 12px 24px; border: none; border-radius: 25px; cursor: pointer; font-size: 14px;">
+                📄 Download Itinerary as PDF
+            </button>
+        </div>
         
         <div class="input-area">
             <input type="text" id="userInput" placeholder="Type your message..." autocomplete="off">
@@ -34,24 +41,50 @@
     </div>
 
     <script>
-        let currentTripId = null;
         const chatBox = document.getElementById('chatBox');
         const userInput = document.getElementById('userInput');
+        const tripList = document.getElementById('tripList');
+        let currentTripId = null;
 
-        // Send message on Enter key
+        // Load trip history on page load
+        window.addEventListener('DOMContentLoaded', loadTripHistory);
+
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
+
+        async function loadTripHistory() {
+            try {
+                const response = await fetch('/api/trips');
+                const data = await response.json();
+                
+                if (data.success && data.trips.length > 0) {
+                    tripList.innerHTML = data.trips.map(trip => `
+                        <div class="trip-item" onclick="loadTrip(${trip.id})">
+                            <strong>${trip.destination}</strong> (${trip.duration})<br>
+                            <small>Trip #${trip.id} - ${trip.created_at}</small>
+                        </div>
+                    `).join('');
+                } else {
+                    tripList.innerHTML = '<p>No saved trips yet.</p>';
+                }
+            } catch (error) {
+                tripList.innerHTML = '<p>Error loading trips.</p>';
+            }
+        }
+
+        async function loadTrip(tripId) {
+            addMessage(`Loading trip #${tripId}...`, 'bot');
+            // You can expand this to show full trip details
+        }
 
         async function sendMessage() {
             const message = userInput.value.trim();
             if (!message) return;
 
-            // Add user message to chat
             addMessage(message, 'user');
             userInput.value = '';
 
-            // Show loading state
             const loadingId = addMessage('Thinking...', 'bot loading');
 
             try {
@@ -62,19 +95,19 @@
                 });
 
                 const data = await response.json();
-                
-                // Remove loading message
                 document.getElementById(loadingId).remove();
 
-              if (data.success) {
-    addMessage(data.message, 'bot');
-    
-    // Extract Trip ID from message if present
-    const tripIdMatch = data.message.match(/Trip ID: #(\d+)/);
-    if (tripIdMatch) {
-        currentTripId = tripIdMatch[1];
-        document.getElementById('exportArea').style.display = 'block';
-    }
+                if (data.success) {
+                    addMessage(data.message, 'bot');
+                    
+                    // Extract Trip ID from message
+                    const tripIdMatch = data.message.match(/Trip ID: #(\d+)/);
+                    if (tripIdMatch) {
+                        currentTripId = tripIdMatch[1];
+                        document.getElementById('exportArea').style.display = 'block';
+                        // Reload trip history to show new trip
+                        loadTripHistory();
+                    }
                 } else {
                     addMessage('Error: ' + data.error, 'bot error');
                 }
@@ -82,6 +115,33 @@
                 document.getElementById(loadingId).remove();
                 addMessage('Connection error. Please try again.', 'bot error');
             }
+        }
+
+        function exportPDF() {
+            if (!currentTripId) return;
+            
+            fetch('/api/export-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trip_id: currentTripId })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Failed to generate PDF');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `thrive-trip-${currentTripId}.pdf`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                alert('Error generating PDF: ' + error.message);
+            });
         }
 
         function addMessage(text, type) {
@@ -94,34 +154,6 @@
             chatBox.scrollTop = chatBox.scrollHeight;
             return id;
         }
-        // Add to the <script> section in index.html
-
-
-function exportPDF() {
-    if (!currentTripId) return;
-    
-    fetch('/api/export-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trip_id: currentTripId })
-    })
-    .then(response => {
-        if (response.ok) {
-            return response.blob();
-        }
-        throw new Error('Failed to generate PDF');
-    })
-    .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `thrive-trip-${currentTripId}.pdf`;
-        a.click();
-    })
-    .catch(error => {
-        alert('Error generating PDF: ' + error.message);
-    });
-}
     </script>
 </body>
 </html>

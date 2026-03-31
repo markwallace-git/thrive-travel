@@ -54,7 +54,7 @@ def get_trips():
         print(f"Trips Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/export-pdf', methods=['POST'])
+        @app.route('/api/export-pdf', methods=['POST'])
 def export_pdf():
     """Generate and download itinerary as PDF"""
     try:
@@ -72,6 +72,9 @@ def export_pdf():
         
         if not trip:
             return jsonify({'error': 'Trip not found'}), 404
+        
+        # Log trip data for debugging
+        print(f"Exporting trip {trip_id}: {trip.keys()}")
         
         # Ensure itinerary is a list (might be JSON string from DB)
         if isinstance(trip.get('itinerary'), str):
@@ -95,7 +98,7 @@ def export_pdf():
     except Exception as e:
         print(f"PDF Export Error: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
+        
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"Thrive Web Server starting on http://localhost:{port}")
