@@ -6,7 +6,10 @@ from datetime import datetime
 # Detect environment and choose database
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
+print(f"=== DATABASE DEBUG ===")
 print(f"DATABASE_URL detected: {'YES' if DATABASE_URL else 'NO'}")
+if DATABASE_URL:
+    print(f"DATABASE_URL starts with: {DATABASE_URL[:30]}...")
 
 if DATABASE_URL:
     # Production: PostgreSQL
@@ -14,18 +17,18 @@ if DATABASE_URL:
         import psycopg2
         from psycopg2.extras import RealDictCursor
         POSTGRES_AVAILABLE = True
-        print("psycopg2 imported successfully")
+        print("psycopg2 imported: SUCCESS")
     except ImportError as e:
         POSTGRES_AVAILABLE = False
-        print(f"psycopg2 import failed: {e}")
+        print(f"psycopg2 import: FAILED - {e}")
     
     def get_connection():
         try:
             conn = psycopg2.connect(DATABASE_URL)
-            print("PostgreSQL connection successful")
+            print("PostgreSQL connection: SUCCESS")
             return conn
         except Exception as e:
-            print(f"PostgreSQL connection failed: {e}")
+            print(f"PostgreSQL connection: FAILED - {e}")
             raise
     
     def init_db():
@@ -53,14 +56,14 @@ if DATABASE_URL:
             
             conn.commit()
             conn.close()
-            print("PostgreSQL database initialized.")
+            print("PostgreSQL table init: SUCCESS")
         except Exception as e:
-            print(f"Database init error: {e}")
+            print(f"PostgreSQL table init: FAILED - {e}")
     
     def save_trip(user_id: str, trip_data: dict) -> int:
         """Save a trip and return its ID (PostgreSQL)"""
         if not POSTGRES_AVAILABLE:
-            print("PostgreSQL not available")
+            print("PostgreSQL not available for save")
             return -1
         
         try:
@@ -84,15 +87,18 @@ if DATABASE_URL:
             conn.commit()
             conn.close()
             
-            print(f"Trip saved successfully with ID: {trip_id}")
+            print(f"Trip SAVED successfully with ID: {trip_id}")
             return trip_id
         except Exception as e:
-            print(f"Database save error: {e}")
+            print(f"Trip SAVE failed: {e}")
             return -1
     
     def get_user_trips(user_id: str) -> list:
         """Retrieve all trips for a user (PostgreSQL)"""
+        print(f"get_user_trips called for user: {user_id}")
+        
         if not POSTGRES_AVAILABLE:
+            print("PostgreSQL not available for fetch")
             return []
         
         try:
@@ -103,23 +109,28 @@ if DATABASE_URL:
             rows = cursor.fetchall()
             conn.close()
             
+            print(f"PostgreSQL query returned {len(rows)} rows")
+            
             trips = []
             for row in rows:
-                trips.append({
+                trip = {
                     "id": row["id"],
                     "user_id": row["user_id"],
                     "destination": row["destination"],
                     "duration": row["duration"],
                     "budget": row["budget"],
-                    "preferences": row["preferences"] if isinstance(row["preferences"], list) else json.loads(row["preferences"]),
-                    "itinerary": row["itinerary"] if isinstance(row["itinerary"], list) else json.loads(row["itinerary"]),
+                    "preferences": row["preferences"] if isinstance(row["preferences"], list) else json.loads(row["preferences"]) if row["preferences"] else [],
+                    "itinerary": row["itinerary"] if isinstance(row["itinerary"], list) else json.loads(row["itinerary"]) if row["itinerary"] else [],
                     "created_at": row["created_at"].strftime('%Y-%m-%d %H:%M') if row["created_at"] else ""
-                })
+                }
+                trips.append(trip)
             
-            print(f"Retrieved {len(trips)} trips for user {user_id}")
+            print(f"get_user_trips returning {len(trips)} trips")
             return trips
         except Exception as e:
-            print(f"Database fetch error: {e}")
+            print(f"get_user_trips FAILED: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
 else:
@@ -127,6 +138,7 @@ else:
     import sqlite3
     
     DB_NAME = "thrive_trips.db"
+    print(f"Using SQLite database: {DB_NAME}")
     
     def get_connection():
         return sqlite3.connect(DB_NAME)
@@ -152,9 +164,9 @@ else:
             
             conn.commit()
             conn.close()
-            print("SQLite database initialized.")
+            print("SQLite table init: SUCCESS")
         except Exception as e:
-            print(f"Database init error: {e}")
+            print(f"SQLite table init: FAILED - {e}")
     
     def save_trip(user_id: str, trip_data: dict) -> int:
         """Save a trip and return its ID (SQLite)"""
@@ -178,14 +190,16 @@ else:
             conn.commit()
             conn.close()
             
-            print(f"Trip saved successfully with ID: {trip_id}")
+            print(f"Trip SAVED successfully with ID: {trip_id}")
             return trip_id
         except Exception as e:
-            print(f"Database save error: {e}")
+            print(f"Trip SAVE failed: {e}")
             return -1
     
     def get_user_trips(user_id: str) -> list:
         """Retrieve all trips for a user (SQLite)"""
+        print(f"get_user_trips called for user: {user_id}")
+        
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -193,6 +207,8 @@ else:
             cursor.execute('SELECT * FROM trips WHERE user_id = ? ORDER BY created_at DESC', (user_id,))
             rows = cursor.fetchall()
             conn.close()
+            
+            print(f"SQLite query returned {len(rows)} rows")
             
             trips = []
             for row in rows:
@@ -202,13 +218,13 @@ else:
                     "destination": row[2],
                     "duration": row[3],
                     "budget": row[4],
-                    "preferences": json.loads(row[5]),
-                    "itinerary": json.loads(row[6]),
+                    "preferences": json.loads(row[5]) if row[5] else [],
+                    "itinerary": json.loads(row[6]) if row[6] else [],
                     "created_at": row[7]
                 })
             
-            print(f"Retrieved {len(trips)} trips for user {user_id}")
+            print(f"get_user_trips returning {len(trips)} trips")
             return trips
         except Exception as e:
-            print(f"Database fetch error: {e}")
+            print(f"get_user_trips FAILED: {e}")
             return []
