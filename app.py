@@ -1,102 +1,103 @@
-# app.py
-import os
+# pdf_generator.py
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from datetime import datetime
 import io
 import json
-from flask import Flask, render_template, request, jsonify, send_file
-from engine import ThriveEngine
-from pdf_generator import generate_itinerary_pdf
 
-app = Flask(__name__)
-
-# Initialize engine (one instance per session)
-engine = ThriveEngine(user_id="web_user")
-
-@app.route('/')
-def home():
-    """Render the chat interface"""
-    return render_template('index.html')
-
-@app.route('/api/chat', methods=['POST'])
-def chat():
-    """Handle chat messages from the frontend"""
-    try:
-        data = request.get_json()
-        user_message = data.get('message', '')
-        
-        if not user_message:
-            return jsonify({'error': 'No message provided'}), 400
-        
-        # Process through Thrive Engine
-        response = engine.process_input(user_message)
-        
-        return jsonify({
-            'success': True,
-            'message': response['message'],
-            'action': response['next_action'],
-            'data': response['data']
-        })
+def generate_itinerary_pdf(trip_data: dict) -> bytes:
+    """Generate a PDF itinerary from trip data"""
     
-    except Exception as e:
-        print(f"Chat Error: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/trips', methods=['GET'])
-def get_trips():
-    """Retrieve saved trip history"""
     try:
-        from database import get_user_trips
-        trips = get_user_trips("web_user")
-        return jsonify({'success': True, 'trips': trips})
-    except Exception as e:
-        print(f"Trips Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/export-pdf', methods=['POST'])
-def export_pdf():
-    """Generate and download itinerary as PDF"""
-    try:
-        from database import get_user_trips
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
         
-        data = request.get_json()
-        trip_id = data.get('trip_id')
-        
-        if not trip_id:
-            return jsonify({'error': 'No trip ID provided'}), 400
-        
-        # Get trip from database
-        trips = get_user_trips("web_user")
-        trip = next((t for t in trips if t['id'] == int(trip_id)), None)
-        
-        if not trip:
-            return jsonify({'error': 'Trip not found'}), 404
-        
-        # Ensure itinerary is a list (might be JSON string from DB)
-        if isinstance(trip.get('itinerary'), str):
-            trip['itinerary'] = json.loads(trip['itinerary'])
-        
-        # Ensure preferences is a list
-        if isinstance(trip.get('preferences'), str):
-            trip['preferences'] = json.loads(trip['preferences'])
-        
-        # Generate PDF
-        pdf_bytes = generate_itinerary_pdf(trip)
-        
-        # Return as downloadable file
-        return send_file(
-            io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=f"thrive-trip-{trip_id}.pdf"
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#667eea'),
+            spaceAfter=30
         )
+        
+        content = []
+        
+        # Title
+        destination = trip_data.get('destination', 'Your Trip')
+        content.append(Paragraph(f"Thrive Travel: {destination}", title_style))
+        content.append(Spacer(1, 12))
+        
+        # Trip Details
+        preferences = trip_data.get('preferences', [])
+        if isinstance(preferences, str):
+            try:
+                preferences = json.loads(preferences)
+            except:
+                preferences = []
+        
+        details = [
+            ['Destination:', str(trip_data.get('destination', 'N/A'))],
+            ['Duration:', str(trip_data.get('duration', 'N/A'))],
+            ['Budget:', str(trip_data.get('budget', 'N/A'))],
+            ['Preferences:', ', '.join(preferences) if preferences else 'N/A'],
+            ['Generated:', datetime.now().strftime('%Y-%m-%d %H:%M')]
+        ]
+        
+        details_table = Table(details, colWidths=[150, 250])
+        details_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        content.append(details_table)
+        content.append(Spacer(1, 30))
+        
+        # Itinerary
+        content.append(Paragraph("Your Itinerary", styles['Heading2']))
+        content.append(Spacer(1, 12))
+        
+        itinerary = trip_data.get('itinerary', [])
+        if isinstance(itinerary, str):
+            try:
+                itinerary = json.loads(itinerary)
+            except:
+                itinerary = []
+        
+        for day in itinerary:
+            if isinstance(day, dict):
+                day_num = day.get('day', 0)
+                content.append(Paragraph(f"<b>Day {day_num}</b>", styles['Heading3']))
+                
+                if 'weather' in day:
+                    content.append(Paragraph(f"{day['weather']}", styles['Normal']))
+                
+                activities = day.get('activities', [])
+                for activity in activities:
+                    content.append(Paragraph(f"- {activity}", styles['Normal']))
+                
+                content.append(Spacer(1, 15))
+        
+        content.append(Spacer(1, 30))
+        content.append(Paragraph(
+            "<i>Generated by Thrive AI Travel Operator</i>",
+            styles['Normal']
+        ))
+        
+        doc.build(content)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+        
+        return pdf_bytes
     
     except Exception as e:
-        print(f"PDF Export Error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    print(f"Thrive Web Server starting on http://localhost:{port}")
-    app.run(host='0.0.0.0', port=port, debug=False)
+        print(f"PDF Generation Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
