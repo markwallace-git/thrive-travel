@@ -7,7 +7,7 @@ from datetime import datetime
 import io
 import json
 
-def generate_itinerary_pdf(trip_ dict) -> bytes:
+def generate_itinerary_pdf(trip_data: dict) -> bytes:
     """Generate a PDF itinerary from trip data"""
     
     try:
