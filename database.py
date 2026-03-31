@@ -58,7 +58,7 @@ if DATABASE_URL:
         except Exception as e:
             print(f"PostgreSQL table init: FAILED - {e}")
     
-    def save_trip(user_id: str, trip_ dict) -> int:
+   def save_trip(user_id: str, trip_data: dict) -> int:
         """Save a trip and return its ID (PostgreSQL)"""
         if not POSTGRES_AVAILABLE:
             print("PostgreSQL not available for save")
