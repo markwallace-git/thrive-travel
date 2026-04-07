@@ -3,88 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thrive Travel Planner</title>
+    <title>Thrive - AI Travel Companion</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🤖 Thrive</h1>
-            <p>Your Autonomous AI Travel Operator</p>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <h1>Thrive</h1>
+            </div>
+            <p class="tagline">Your AI Travel Companion</p>
         </header>
-        
-        <!-- Trip History Panel -->
-        <div class="trip-history" id="tripHistory">
-            <h3>📚 Your Saved Trips</h3>
-            <div id="tripList">Loading...</div>
-        </div>
-        
-        <div class="chat-box" id="chatBox">
-            <div class="message bot">
-                <div class="bubble">
-                    Hello! I'm Thrive. Where would you like to travel? 🌍
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="chat">Chat</button>
+            <button class="tab-btn" data-tab="trips">My Trips</button>
+            <button class="tab-btn" data-tab="profile">Profile</button>
+        </nav>
+
+        <!-- Chat Tab -->
+        <div class="tab-content active" id="chat-tab">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message bot">
+                        <div class="message-content">
+                            <p>Hello! I'm Thrive, your AI travel agent. 🌍</p>
+                            <p>Where would you like to travel?</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="userInput" placeholder="I want to go to Paris for 4 days..." autocomplete="off">
+                    <button onclick="sendMessage()" class="send-btn">Send</button>
                 </div>
             </div>
         </div>
-        
-        <!-- Export Button -->
-        <div class="export-area" id="exportArea" style="display: none; padding: 15px; text-align: center; background: #f8f9fa; border-top: 1px solid #e9ecef;">
-            <button onclick="exportPDF()" style="background: #28a745; color: white; padding: 12px 24px; border: none; border-radius: 25px; cursor: pointer; font-size: 14px;">
-                📄 Download Itinerary as PDF
-            </button>
+
+        <!-- My Trips Tab -->
+        <div class="tab-content" id="trips-tab">
+            <div class="trips-container">
+                <h2>Your Saved Trips</h2>
+                <div id="tripsList" class="trips-list">
+                    <p class="loading">Loading trips...</p>
+                </div>
+            </div>
         </div>
-        
-        <div class="input-area">
-            <input type="text" id="userInput" placeholder="Type your message..." autocomplete="off">
-            <button onclick="sendMessage()">Send</button>
+
+        <!-- Profile Tab -->
+        <div class="tab-content" id="profile-tab">
+            <div class="profile-container">
+                <h2>Your Profile</h2>
+                <div class="profile-section">
+                    <h3>Travel Preferences</h3>
+                    <p>Set your preferred travel style, budget range, and interests.</p>
+                </div>
+                <div class="profile-section">
+                    <h3>Feedback</h3>
+                    <div class="feedback-form">
+                        <div class="star-rating">
+                            <span class="star" data-rating="1">★</span>
+                            <span class="star" data-rating="2">★</span>
+                            <span class="star" data-rating="3">★</span>
+                            <span class="star" data-rating="4">★</span>
+                            <span class="star" data-rating="5">★</span>
+                        </div>
+                        <textarea placeholder="Share your experience with Thrive..."></textarea>
+                        <button class="submit-btn">Submit Feedback</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trip Detail Modal -->
+        <div class="modal" id="tripModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">Trip Details</h2>
+                    <button class="close-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Trip details loaded here -->
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        const chatBox = document.getElementById('chatBox');
-        const userInput = document.getElementById('userInput');
-        const tripList = document.getElementById('tripList');
-        const exportArea = document.getElementById('exportArea');
-        let currentTripId = null;
+        // Tab Navigation
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab + '-tab').classList.add('active');
+                
+                if (btn.dataset.tab === 'trips') {
+                    loadTrips();
+                }
+            });
+        });
 
-        // Load trip history on page load
-        window.addEventListener('DOMContentLoaded', loadTripHistory);
+        // Chat Functionality
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        let currentTripId = null;
 
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
 
-        // Load saved trips from database
-async function loadTripHistory() {
-    tripList.innerHTML = '<p style="color: #999; font-size: 12px;">Loading...</p>';
-    
-    try {
-        const response = await fetch('/api/trips');
-        const data = await response.json();
-        
-        if (data.success && data.trips && data.trips.length > 0) {
-            tripList.innerHTML = data.trips.map(trip => `
-                <div class="trip-item" onclick="loadTrip(${trip.id})">
-                    <strong>${trip.destination}</strong> (${trip.duration})<br>
-                    <small>Trip #${trip.id} - ${trip.created_at}</small>
-                </div>
-            `).join('');
-        } else {
-            tripList.innerHTML = '<p style="color: #999; font-size: 12px;">No saved trips yet. Plan your first trip!</p>';
-        }
-    } catch (error) {
-        console.error('Error loading trips:', error);
-        tripList.innerHTML = '<p style="color: #cc0000; font-size: 12px;">Error loading trips.</p>';
-    }
-}
-
-        // Load and display a specific trip
-async function loadTrip(tripId) {
-    // Show loading state
-    addMessage(`📂 Loading trip #${tripId}...`, 'bot');
-}
-
-        // Send message to Thrive
         async function sendMessage() {
             const message = userInput.value.trim();
             if (!message) return;
@@ -107,13 +138,9 @@ async function loadTrip(tripId) {
                 if (data.success) {
                     addMessage(data.message, 'bot');
                     
-                    // Extract Trip ID from message
                     const tripIdMatch = data.message.match(/Trip ID: #(\d+)/);
                     if (tripIdMatch) {
                         currentTripId = tripIdMatch[1];
-                        exportArea.style.display = 'block';
-                        // Reload trip history to show new trip
-                        loadTripHistory();
                     }
                 } else {
                     addMessage('Error: ' + data.error, 'bot error');
@@ -124,48 +151,178 @@ async function loadTrip(tripId) {
             }
         }
 
-        // Export trip as PDF
-        function exportPDF() {
-            if (!currentTripId) {
-                alert('No trip selected for export');
-                return;
-            }
-            
-            fetch('/api/export-pdf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trip_id: currentTripId })
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.blob();
-                }
-                throw new Error('Failed to generate PDF');
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `thrive-trip-${currentTripId}.pdf`;
-                a.click();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(error => {
-                alert('Error generating PDF: ' + error.message);
-            });
-        }
-
-        // Add message to chat
         function addMessage(text, type) {
             const id = 'msg-' + Date.now();
             const div = document.createElement('div');
             div.className = `message ${type}`;
             div.id = id;
-            div.innerHTML = `<div class="bubble">${text.replace(/\n/g, '<br>')}</div>`;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            div.innerHTML = `<div class="message-content"><p>${text.replace(/\n/g, '<br>')}</p></div>`;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
             return id;
         }
+
+        // Load Trips
+        async function loadTrips() {
+            const tripsList = document.getElementById('tripsList');
+            tripsList.innerHTML = '<p class="loading">Loading trips...</p>';
+            
+            try {
+                const response = await fetch('/api/trips');
+                const data = await response.json();
+                
+                if (data.success && data.trips && data.trips.length > 0) {
+                    tripsList.innerHTML = data.trips.map(trip => `
+                        <div class="trip-card" onclick="openTripModal(${trip.id})">
+                            <div class="trip-header">
+                                <h3>${trip.destination}</h3>
+                                <span class="trip-duration">${trip.duration}</span>
+                            </div>
+                            <div class="trip-details">
+                                <p>💰 ${trip.budget || 'Budget not specified'}</p>
+                                <p>📅 Created: ${trip.created_at}</p>
+                            </div>
+                            <div class="trip-actions">
+                                <button class="view-btn">View Details</button>
+                                <button class="pdf-btn" onclick="event.stopPropagation(); downloadPDF(${trip.id})">Download PDF</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    tripsList.innerHTML = '<p class="empty">No saved trips yet. Plan your first trip!</p>';
+                }
+            } catch (error) {
+                tripsList.innerHTML = '<p class="error">Error loading trips. Please refresh.</p>';
+            }
+        }
+
+        // Trip Modal
+        async function openTripModal(tripId) {
+            const modal = document.getElementById('tripModal');
+            const modalBody = document.getElementById('modalBody');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            modalBody.innerHTML = '<p class="loading">Loading trip details...</p>';
+            modal.style.display = 'flex';
+            
+            try {
+                const response = await fetch('/api/trips');
+                const data = await response.json();
+                
+                if (data.success && data.trips) {
+                    const trip = data.trips.find(t => t.id === tripId);
+                    
+                    if (trip) {
+                        modalTitle.textContent = `${trip.destination} - ${trip.duration}`;
+                        
+                        let html = `
+                            <div class="trip-info">
+                                <p><strong>Budget:</strong> ${trip.budget || 'Not specified'}</p>
+                                <p><strong>Preferences:</strong> ${trip.preferences ? trip.preferences.join(', ') : 'None'}</p>
+                            </div>
+                            
+                            <h3>Itinerary</h3>
+                            <div class="itinerary">
+                        `;
+                        
+                        if (trip.itinerary && trip.itinerary.length > 0) {
+                            for (const day of trip.itinerary) {
+                                html += `
+                                    <div class="day-card">
+                                        <div class="day-header">
+                                            <h4>Day ${day.day}</h4>
+                                            <span class="weather">${day.weather || 'Weather unavailable'}</span>
+                                        </div>
+                                        <ul class="activities">
+                                `;
+                                
+                                if (day.activities) {
+                                    for (const activity of day.activities) {
+                                        html += `<li>${activity}</li>`;
+                                    }
+                                }
+                                
+                                html += `
+                                        </ul>
+                                    </div>
+                                `;
+                            }
+                        }
+                        
+                        html += `</div>`;
+                        
+                        // Hotel Recommendations
+                        if (trip.hotels && trip.hotels.length > 0) {
+                            html += `<h3>Hotel Recommendations</h3><div class="hotels">`;
+                            for (const hotel of trip.hotels) {
+                                html += `
+                                    <div class="hotel-card">
+                                        <h4>${hotel.name}</h4>
+                                        <p class="price">$${hotel.price}/night</p>
+                                        <p class="rating">⭐ ${hotel.rating}</p>
+                                        <button class="book-btn">Book Now</button>
+                                    </div>
+                                `;
+                            }
+                            html += `</div>`;
+                        }
+                        
+                        modalBody.innerHTML = html;
+                    } else {
+                        modalBody.innerHTML = '<p class="error">Trip not found.</p>';
+                    }
+                }
+            } catch (error) {
+                modalBody.innerHTML = '<p class="error">Error loading trip details.</p>';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('tripModal').style.display = 'none';
+        }
+
+        // Download PDF
+        async function downloadPDF(tripId) {
+            try {
+                const response = await fetch('/api/export-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trip_id: tripId })
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `thrive-trip-${tripId}.pdf`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('Error generating PDF');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Star Rating
+        document.querySelectorAll('.star').forEach(star => {
+            star.addEventListener('click', () => {
+                const rating = star.dataset.rating;
+                document.querySelectorAll('.star').forEach((s, i) => {
+                    s.classList.toggle('active', i < rating);
+                });
+            });
+        });
+
+        // Close modal on outside click
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('tripModal');
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
     </script>
 </body>
 </html>
