@@ -27,12 +27,71 @@
 
         <!-- Chat Tab -->
         <div class="tab-content active" id="chat-tab">
+            <!-- Quick Categories Bar -->
+            <div class="quick-categories">
+                <button class="category-btn" onclick="filterCategory('hotel')">
+                    <div class="category-icon">🏨</div>
+                    <span>Hotel</span>
+                </button>
+                <button class="category-btn" onclick="filterCategory('food')">
+                    <div class="category-icon">🍽️</div>
+                    <span>Food</span>
+                </button>
+                <button class="category-btn" onclick="filterCategory('business')">
+                    <div class="category-icon">💼</div>
+                    <span>Business</span>
+                </button>
+                <button class="category-btn" onclick="filterCategory('attraction')">
+                    <div class="category-icon">🎯</div>
+                    <span>Attraction</span>
+                </button>
+            </div>
+
+            <!-- Popular Destinations -->
+            <div class="popular-section">
+                <h3 class="section-title">Popular</h3>
+                <div class="destinations-grid">
+                    <div class="destination-card" onclick="suggestDestination('Dubai')">
+                        <img src="https://images.unsplash.com/photo-1512453979798-5ea904ac66de?w=400&h=300&fit=crop" alt="Dubai">
+                        <div class="destination-overlay">
+                            <h4>Dubai</h4>
+                            <p>UAE</p>
+                        </div>
+                    </div>
+                    <div class="destination-card" onclick="suggestDestination('Rome')">
+                        <img src="https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&h=300&fit=crop" alt="Rome">
+                        <div class="destination-overlay">
+                            <h4>Rome</h4>
+                            <p>Italy</p>
+                        </div>
+                    </div>
+                    <div class="destination-card" onclick="suggestDestination('Paris')">
+                        <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&h=300&fit=crop" alt="Paris">
+                        <div class="destination-overlay">
+                            <h4>Paris</h4>
+                            <p>France</p>
+                        </div>
+                    </div>
+                    <div class="destination-card" onclick="suggestDestination('Tokyo')">
+                        <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&h=300&fit=crop" alt="Tokyo">
+                        <div class="destination-overlay">
+                            <h4>Tokyo</h4>
+                            <p>Japan</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Container -->
             <div class="chat-container">
                 <div class="chat-messages" id="chatMessages">
                     <div class="message bot">
                         <div class="message-content">
                             <p>Hello! I'm Thrive, your AI travel agent. 🌍</p>
                             <p>Where would you like to travel?</p>
+                            <p style="margin-top: 8px; font-size: 13px; color: #667eea;">
+                                Or tap a popular destination above to get started!
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -107,6 +166,31 @@
             });
         });
 
+        // Filter by category
+        function filterCategory(category) {
+            const messages = {
+                'hotel': 'I want to find hotels',
+                'food': 'I want to find restaurants and food',
+                'business': 'I need business travel services',
+                'attraction': 'I want to explore attractions and activities'
+            };
+            
+            const input = document.getElementById('userInput');
+            input.value = messages[category] || '';
+            input.focus();
+        }
+
+        // Suggest destination
+        function suggestDestination(destination) {
+            const input = document.getElementById('userInput');
+            input.value = `I want to go to ${destination} for a few days`;
+            input.focus();
+            
+            setTimeout(() => {
+                sendMessage();
+            }, 1000);
+        }
+
         // Chat Functionality
         const chatMessages = document.getElementById('chatMessages');
         const userInput = document.getElementById('userInput');
@@ -141,6 +225,21 @@
                     const tripIdMatch = data.message.match(/Trip ID: #(\d+)/);
                     if (tripIdMatch) {
                         currentTripId = tripIdMatch[1];
+                        
+                        // Add "Show More Details" button
+                        setTimeout(() => {
+                            const detailsBtn = document.createElement('div');
+                            detailsBtn.className = 'message bot';
+                            detailsBtn.innerHTML = `
+                                <div class="message-content">
+                                    <a href="/trip/${currentTripId}" class="details-link">
+                                        📋 Show More Details →
+                                    </a>
+                                </div>
+                            `;
+                            chatMessages.appendChild(detailsBtn);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }, 500);
                     }
                 } else {
                     addMessage('Error: ' + data.error, 'bot error');
@@ -251,7 +350,6 @@
                         
                         html += `</div>`;
                         
-                        // Hotel Recommendations
                         if (trip.hotels && trip.hotels.length > 0) {
                             html += `<h3>Hotel Recommendations</h3><div class="hotels">`;
                             for (const hotel of trip.hotels) {
