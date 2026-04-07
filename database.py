@@ -41,6 +41,7 @@ def init_db():
                     budget TEXT,
                     preferences JSONB,
                     itinerary JSONB,
+                    hotels JSONB,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -54,11 +55,12 @@ def init_db():
                     budget TEXT,
                     preferences TEXT,
                     itinerary TEXT,
+                    hotels TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
         conn.commit()
-        print("Database initialized")
+        print("Database initialized with hotels column")
     except Exception as e:
         print(f"Init error: {e}")
     finally:
@@ -73,16 +75,18 @@ def save_trip(user_id, trip_data):
         cur = conn.cursor()
         prefs = json.dumps(trip_data.get("preferences", []))
         itinerary = json.dumps(trip_data.get("itinerary", []))
+        hotels = json.dumps(trip_data.get("hotels", []))
+        
         if db_type == 'postgres':
             cur.execute(
-                "INSERT INTO trips (user_id,destination,duration,budget,preferences,itinerary) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id",
-                (user_id, trip_data.get("destination",""), trip_data.get("duration",""), trip_data.get("budget",""), prefs, itinerary)
+                "INSERT INTO trips (user_id,destination,duration,budget,preferences,itinerary,hotels) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+                (user_id, trip_data.get("destination",""), trip_data.get("duration",""), trip_data.get("budget",""), prefs, itinerary, hotels)
             )
             trip_id = cur.fetchone()[0]
         else:
             cur.execute(
-                "INSERT INTO trips (user_id,destination,duration,budget,preferences,itinerary) VALUES (?,?,?,?,?,?)",
-                (user_id, trip_data.get("destination",""), trip_data.get("duration",""), trip_data.get("budget",""), prefs, itinerary)
+                "INSERT INTO trips (user_id,destination,duration,budget,preferences,itinerary,hotels) VALUES (?,?,?,?,?,?,?)",
+                (user_id, trip_data.get("destination",""), trip_data.get("duration",""), trip_data.get("budget",""), prefs, itinerary, hotels)
             )
             trip_id = cur.lastrowid
         conn.commit()
@@ -120,6 +124,7 @@ def get_user_trips(user_id):
                     "budget": row["budget"],
                     "preferences": row["preferences"] if isinstance(row["preferences"], list) else json.loads(row["preferences"]) if row["preferences"] else [],
                     "itinerary": row["itinerary"] if isinstance(row["itinerary"], list) else json.loads(row["itinerary"]) if row["itinerary"] else [],
+                    "hotels": row["hotels"] if isinstance(row["hotels"], list) else json.loads(row["hotels"]) if row["hotels"] else [],
                     "created_at": row["created_at"].strftime('%Y-%m-%d %H:%M') if row["created_at"] else ""
                 }
             else:
@@ -131,7 +136,8 @@ def get_user_trips(user_id):
                     "budget": row[4],
                     "preferences": json.loads(row[5]) if row[5] else [],
                     "itinerary": json.loads(row[6]) if row[6] else [],
-                    "created_at": row[7]
+                    "hotels": json.loads(row[7]) if row[7] else [],
+                    "created_at": row[8]
                 }
             trips.append(trip)
         print(f"Retrieved {len(trips)} trips")
