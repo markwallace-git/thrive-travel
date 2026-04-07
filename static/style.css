@@ -626,4 +626,234 @@ body {
         height: 44px;
         font-size: 20px;
     }
+    /* Destination Details Page */
+.destination-hero {
+    position: relative;
+    height: 300px;
+    overflow: hidden;
+}
+
+.destination-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.back-button {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 44px;
+    height: 44px;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+}
+
+.back-button:hover {
+    transform: scale(1.1);
+}
+
+.hero-actions {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 12px;
+}
+
+.action-btn {
+    width: 44px;
+    height: 44px;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+}
+
+.action-btn:hover {
+    transform: scale(1.1);
+}
+
+.destination-content {
+    padding: 24px 20px;
+    background: #fff;
+}
+
+.destination-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.destination-location {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.destination-description {
+    margin-bottom: 28px;
+}
+
+.destination-description p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #555;
+    margin-bottom: 12px;
+}
+
+.read-more-btn {
+    background: none;
+    border: none;
+    color: #667eea;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.3s;
+}
+
+.read-more-btn:hover {
+    color: #764ba2;
+    text-decoration: underline;
+}
+
+.category-buttons {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 32px;
+    padding: 20px 0;
+    background: #f8f9fa;
+    border-radius: 16px;
+}
+
+.category-btn-large {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 12px;
+    transition: all 0.3s;
+}
+
+.category-btn-large:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.category-icon-large {
+    font-size: 32px;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    color: white;
+}
+
+.category-btn-large span {
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
+}
+
+.gallery-section {
+    margin-bottom: 28px;
+}
+
+.gallery-section .section-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 16px;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.gallery-item {
+    border-radius: 12px;
+    overflow: hidden;
+    height: 140px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.gallery-item:hover img {
+    transform: scale(1.05);
+}
+
+.plan-trip-section {
+    padding-bottom: 20px;
+}
+
+.plan-trip-btn {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.plan-trip-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .destination-hero {
+        height: 260px;
+    }
+    
+    .destination-title {
+        font-size: 28px;
+    }
+    
+    .category-icon-large {
+        width: 56px;
+        height: 56px;
+        font-size: 28px;
+    }
+    
+    .gallery-item {
+        height: 120px;
+    }
+}
 }

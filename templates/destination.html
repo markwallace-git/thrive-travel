@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ destination.name }} - Thrive</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Hero Image -->
+        <div class="destination-hero">
+            <img src="{{ destination.image }}" alt="{{ destination.name }}">
+            <button class="back-button" onclick="window.history.back()">
+                <span>←</span>
+            </button>
+            <div class="hero-actions">
+                <button class="action-btn">❤️</button>
+                <button class="action-btn">⬇️</button>
+            </div>
+        </div>
+
+        <!-- Destination Info -->
+        <div class="destination-content">
+            <h1 class="destination-title">{{ destination.name }}</h1>
+            <p class="destination-location">{{ destination.location }}</p>
+            
+            <div class="destination-description">
+                <p>{{ destination.description }}</p>
+                <button class="read-more-btn">READ MORE</button>
+            </div>
+
+            <!-- Category Buttons -->
+            <div class="category-buttons">
+                <button class="category-btn-large" onclick="filterCategory('hotel')">
+                    <div class="category-icon-large">🏨</div>
+                    <span>Hotel</span>
+                </button>
+                <button class="category-btn-large" onclick="filterCategory('restaurant')">
+                    <div class="category-icon-large">🍽️</div>
+                    <span>Restaurant</span>
+                </button>
+                <button class="category-btn-large" onclick="filterCategory('guide')">
+                    <div class="category-icon-large">👤</div>
+                    <span>Guide</span>
+                </button>
+                <button class="category-btn-large" onclick="filterCategory('attraction')">
+                    <div class="category-icon-large">🎯</div>
+                    <span>Attraction</span>
+                </button>
+            </div>
+
+            <!-- Image Gallery -->
+            <div class="gallery-section">
+                <h3 class="section-title">Image</h3>
+                <div class="gallery-grid">
+                    {% for image in destination.gallery %}
+                    <div class="gallery-item">
+                        <img src="{{ image }}" alt="{{ destination.name }} gallery">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Plan Trip Button -->
+            <div class="plan-trip-section">
+                <button class="plan-trip-btn" onclick="planTrip('{{ destination.name }}')">
+                    Plan Your Trip to {{ destination.name }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterCategory(category) {
+            // Navigate to chat with pre-filled message
+            window.location.href = '/?category=' + category + '&destination={{ destination.name }}';
+        }
+
+        function planTrip(destination) {
+            // Navigate to chat with destination pre-filled
+            window.location.href = '/?destination=' + destination;
+        }
+
+        // Check URL parameters on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const category = urlParams.get('category');
+            const destination = urlParams.get('destination');
+            
+            if (category && destination) {
+                // You can show a toast or highlight the category
+                console.log(`User interested in ${category} in ${destination}`);
+            }
+        });
+    </script>
+</body>
+</html>

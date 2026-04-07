@@ -51,32 +51,32 @@
             <div class="popular-section">
                 <h3 class="section-title">Popular</h3>
                 <div class="destinations-grid">
-                    <div class="destination-card" onclick="suggestDestination('Dubai')">
+                    <div class="destination-card" onclick="window.location.href='/destination/Ibiza'">
+                        <img src="https://images.unsplash.com/photo-1523497604123-29b5dc695e78?w=400&h=300&fit=crop" alt="Ibiza">
+                        <div class="destination-overlay">
+                            <h4>Ibiza</h4>
+                            <p>Spain</p>
+                        </div>
+                    </div>
+                    <div class="destination-card" onclick="window.location.href='/destination/Dubai'">
                         <img src="https://images.unsplash.com/photo-1512453979798-5ea904ac66de?w=400&h=300&fit=crop" alt="Dubai">
                         <div class="destination-overlay">
                             <h4>Dubai</h4>
                             <p>UAE</p>
                         </div>
                     </div>
-                    <div class="destination-card" onclick="suggestDestination('Rome')">
+                    <div class="destination-card" onclick="window.location.href='/destination/Rome'">
                         <img src="https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&h=300&fit=crop" alt="Rome">
                         <div class="destination-overlay">
                             <h4>Rome</h4>
                             <p>Italy</p>
                         </div>
                     </div>
-                    <div class="destination-card" onclick="suggestDestination('Paris')">
+                    <div class="destination-card" onclick="window.location.href='/destination/Paris'">
                         <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&h=300&fit=crop" alt="Paris">
                         <div class="destination-overlay">
                             <h4>Paris</h4>
                             <p>France</p>
-                        </div>
-                    </div>
-                    <div class="destination-card" onclick="suggestDestination('Tokyo')">
-                        <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&h=300&fit=crop" alt="Tokyo">
-                        <div class="destination-overlay">
-                            <h4>Tokyo</h4>
-                            <p>Japan</p>
                         </div>
                     </div>
                 </div>
@@ -178,17 +178,6 @@
             const input = document.getElementById('userInput');
             input.value = messages[category] || '';
             input.focus();
-        }
-
-        // Suggest destination
-        function suggestDestination(destination) {
-            const input = document.getElementById('userInput');
-            input.value = `I want to go to ${destination} for a few days`;
-            input.focus();
-            
-            setTimeout(() => {
-                sendMessage();
-            }, 1000);
         }
 
         // Chat Functionality
