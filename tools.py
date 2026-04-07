@@ -144,4 +144,4 @@ def search_hotels(destination: str, budget: str) -> list:
     return [
         {"name": "Grand Hotel", "price": "$200/night", "rating": 4.5},
         {"name": "Budget Stay", "price": "$80/night", "rating": 3.8}
-    ]
+    

@@ -1,12 +1,12 @@
 # api_client.py
 import requests
 import os
-import random
+import json
 
 WEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
-GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
+UNSPLASH_API_KEY = os.getenv("UNSPLASH_API_KEY", "")
 
-# Mock Places Database (Realistic data for popular destinations)
+# Mock Places Database (fallback for activities)
 MOCK_PLACES = {
     "paris": {
         "restaurants": [
@@ -112,42 +112,126 @@ def get_weather_forecast(city: str, days: int = 3) -> list:
         print(f"Weather API Error: {e}")
         return [{"error": "Weather data unavailable"}]
 
-def search_places(destination: str, query: str, max_results: int = 5) -> list:
-    """Search for places using Google Places API OR mock data fallback"""
+def get_destination_info(destination: str) -> dict:
+    """
+    Fetch detailed destination information from Wikipedia API
+    FREE - No API key required
+    """
+    try:
+        # Wikipedia REST API
+        url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{destination}"
+        params = {
+            "redirect": "true"
+        }
+        
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        
+        return {
+            "title": data.get('title', destination),
+            "description": data.get('description', ''),
+            "extract": data.get('extract', ''),
+            "thumbnail": data.get('thumbnail', {}).get('source', ''),
+            "url": data.get('content_urls', {}).get('desktop', {}).get('page', ''),
+            "coordinates": data.get('coordinates', {})
+        }
+    except Exception as e:
+        print(f"Wikipedia API Error: {e}")
+        return {
+            "title": destination,
+            "description": f"Explore {destination}",
+            "extract": f"{destination} is a popular travel destination.",
+            "thumbnail": "",
+            "url": ""
+        }
+
+def get_destination_images(query: str, limit: int = 5) -> list:
+    """
+    Fetch high-quality images from Unsplash API
+    FREE - API key required (instant approval, no payment)
+    Get key at: https://unsplash.com/developers
+    """
     
-    # Try real Google Places API first
-    if GOOGLE_PLACES_API_KEY and GOOGLE_PLACES_API_KEY != "YOUR_API_KEY_HERE":
-        try:
-            url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-            params = {
-                "query": f"{query} in {destination}",
-                "key": GOOGLE_PLACES_API_KEY,
-                "max_results": max_results
+    if not UNSPLASH_API_KEY:
+        print("⚠️  Unsplash API key not configured. Using placeholder images.")
+        return []
+    
+    try:
+        url = "https://api.unsplash.com/search/photos"
+        params = {
+            "query": query,
+            "per_page": limit,
+            "orientation": "landscape",
+            "client_id": UNSPLASH_API_KEY
+        }
+        
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        
+        images = []
+        for result in data.get('results', []):
+            images.append({
+                "url": result['urls']['regular'],
+                "thumbnail": result['urls']['thumb'],
+                "alt_description": result.get('alt_description', ''),
+                "photographer": result['user']['name'],
+                "width": result['width'],
+                "height": result['height']
+            })
+        
+        return images
+    except Exception as e:
+        print(f"Unsplash API Error: {e}")
+        return []
+
+def get_location_coordinates(place: str) -> dict:
+    """
+    Fetch coordinates and location data from OpenStreetMap Nominatim
+    FREE - No API key required
+    """
+    try:
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": place,
+            "format": "json",
+            "limit": 1
+        }
+        
+        headers = {
+            "User-Agent": "ThriveTravelApp/1.0"
+        }
+        
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data:
+            return {
+                "lat": float(data[0]['lat']),
+                "lng": float(data[0]['lon']),
+                "display_name": data[0].get('display_name', place),
+                "bounding_box": {
+                    "north": float(data[0].get('boundingbox', [0, 0, 0, 0])[1]),
+                    "south": float(data[0].get('boundingbox', [0, 0, 0, 0])[0]),
+                    "east": float(data[0].get('boundingbox', [0, 0, 0, 0])[3]),
+                    "west": float(data[0].get('boundingbox', [0, 0, 0, 0])[2])
+                }
             }
-            
-            response = requests.get(url, params=params, timeout=5)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get('status') == 'OK':
-                places = []
-                for result in data.get('results', [])[:max_results]:
-                    places.append({
-                        "name": result.get('name', 'Unknown'),
-                        "address": result.get('formatted_address', ''),
-                        "rating": result.get('rating', 'N/A'),
-                        "price_level": result.get('price_level', 2),
-                        "location": result.get('geometry', {}).get('location', {}),
-                        "photo_reference": result.get('photos', [{}])[0].get('photo_reference', '') if result.get('photos') else ''
-                    })
-                return places
-        except Exception as e:
-            print(f"Google Places API Error: {e}")
-            # Fall through to mock data
+        
+        return {"lat": 0.0, "lng": 0.0, "display_name": place}
+    except Exception as e:
+        print(f"OpenStreetMap Error: {e}")
+        return {"lat": 0.0, "lng": 0.0, "display_name": place}
+
+def search_places(destination: str, query: str, max_results: int = 5) -> list:
+    """
+    Search for places using mock database + real coordinates from OpenStreetMap
+    FREE - No payment required
+    """
     
-    # Fallback to mock data
-    print("Using mock Places data (Google Places API not configured)")
-    destination_lower = destination.lower().split()[0]  # Get first word (e.g., "New York" → "new")
+    destination_lower = destination.lower().split()[0]
     
     # Find matching mock data
     mock_data = None
@@ -157,10 +241,18 @@ def search_places(destination: str, query: str, max_results: int = 5) -> list:
             break
     
     if not mock_data:
-        # Return generic fallback
+        # Return generic fallback with real coordinates
+        coords = get_location_coordinates(destination)
         return [
-            {"name": f"Local {query} in {destination}", "rating": 4.0, "price_level": 2, "lat": 0.0, "lng": 0.0, "address": destination},
-            {"name": f"Popular {query} Spot", "rating": 4.2, "price_level": 2, "lat": 0.0, "lng": 0.0, "address": destination}
+            {
+                "name": f"Popular {query} in {destination}",
+                "rating": 4.0,
+                "price_level": 2,
+                "lat": coords.get('lat', 0.0),
+                "lng": coords.get('lng', 0.0),
+                "address": destination,
+                "description": f"Top-rated {query} spot in {destination}"
+            }
         ]
     
     # Map query to mock category
@@ -185,29 +277,89 @@ def search_places(destination: str, query: str, max_results: int = 5) -> list:
     
     places = mock_data.get(category, mock_data.get("attractions", []))
     
-    # Return random selection up to max_results
-    import random
-    selected = random.sample(places, min(max_results, len(places))) if len(places) > max_results else places
+    # Enhance with Wikipedia descriptions
+    enhanced_places = []
+    for place in places[:max_results]:
+        # Try to get Wikipedia info for the place
+        wiki_info = get_destination_info(place['name'])
+        
+        enhanced_places.append({
+            "name": place['name'],
+            "address": place.get('address', ''),
+            "rating": place.get('rating', 4.0),
+            "price_level": place.get('price_level', 2),
+            "lat": place.get('lat', 0.0),
+            "lng": place.get('lng', 0.0),
+            "description": wiki_info.get('extract', '')[:200] if wiki_info.get('extract') else '',
+            "image": wiki_info.get('thumbnail', ''),
+            "wiki_url": wiki_info.get('url', '')
+        })
     
-    return selected
+    return enhanced_places
 
-def get_place_details(place_id: str) -> dict:
-    """Get detailed info about a specific place"""
+def get_place_details(place_name: str) -> dict:
+    """
+    Get detailed information about a specific place
+    Combines Wikipedia + OpenStreetMap data
+    FREE - No payment required
+    """
     
-    if not GOOGLE_PLACES_API_KEY or not place_id:
-        return {}
+    # Get Wikipedia info
+    wiki_info = get_destination_info(place_name)
     
-    url = "https://maps.googleapis.com/maps/api/place/details/json"
-    params = {
-        "place_id": place_id,
-        "key": GOOGLE_PLACES_API_KEY
+    # Get coordinates
+    coords = get_location_coordinates(place_name)
+    
+    # Get images
+    images = get_destination_images(place_name, limit=3)
+    
+    return {
+        "name": place_name,
+        "description": wiki_info.get('extract', ''),
+        "thumbnail": wiki_info.get('thumbnail', ''),
+        "coordinates": coords,
+        "images": images,
+        "wiki_url": wiki_info.get('url', '')
+    }
+
+def get_hotels(destination: str) -> list:
+    """
+    Mock hotel data (can be replaced with real hotel API later)
+    FREE - Mock data for now
+    """
+    
+    hotels_db = {
+        "paris": [
+            {"name": "Hard Rock Hotels Paris", "price": 350, "rating": 4.5, "stars": 5, "lat": 48.8584, "lng": 2.2945},
+            {"name": "Grand Palladium Paris", "price": 280, "rating": 4.3, "stars": 4, "lat": 48.8606, "lng": 2.3376}
+        ],
+        "tokyo": [
+            {"name": "Park Hyatt Tokyo", "price": 450, "rating": 4.8, "stars": 5, "lat": 35.6717, "lng": 139.7640},
+            {"name": "Shibuya Granbell Hotel", "price": 200, "rating": 4.4, "stars": 4, "lat": 35.6595, "lng": 139.7004}
+        ],
+        "london": [
+            {"name": "The Savoy", "price": 500, "rating": 4.7, "stars": 5, "lat": 51.5103, "lng": -0.1201},
+            {"name": "Premier Inn London", "price": 150, "rating": 4.2, "stars": 3, "lat": 51.5194, "lng": -0.1270}
+        ],
+        "new york": [
+            {"name": "The Plaza Hotel", "price": 600, "rating": 4.6, "stars": 5, "lat": 40.7648, "lng": -73.9754},
+            {"name": "Pod Hotels Times Square", "price": 180, "rating": 4.1, "stars": 3, "lat": 40.7580, "lng": -73.9855}
+        ],
+        "bali": [
+            {"name": "Four Seasons Resort Bali", "price": 400, "rating": 4.9, "stars": 5, "lat": -8.5069, "lng": 115.2625},
+            {"name": "Ubud Village Hotel", "price": 120, "rating": 4.4, "stars": 4, "lat": -8.5069, "lng": 115.2625}
+        ]
     }
     
-    try:
-        response = requests.get(url, params=params, timeout=5)
-        response.raise_for_status()
-        data = response.json()
-        return data.get('result', {})
-    except Exception as e:
-        print(f"Place Details Error: {e}")
-        return {}
+    destination_lower = destination.lower().split()[0]
+    
+    # Find matching hotels
+    for key in hotels_db:
+        if key in destination_lower or destination_lower in key:
+            return hotels_db[key]
+    
+    # Default fallback
+    return [
+        {"name": f"Grand Hotel {destination}", "price": 250, "rating": 4.3, "stars": 4, "lat": 0.0, "lng": 0.0},
+        {"name": f"Budget Stay {destination}", "price": 100, "rating": 3.9, "stars": 3, "lat": 0.0, "lng": 0.0}
+    ]
