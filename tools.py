@@ -4,11 +4,11 @@ from typing import Dict, List
 
 # Import the new search_places function
 try:
-    from api_client import search_places, get_weather_forecast
+    from api_client import search_places, get_weather_forecast, get_hotels
     API_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     API_AVAILABLE = False
-    print("⚠️  WARNING: api_client.py not found.")
+    print(f"⚠️  WARNING: api_client.py import error: {e}")
 
 def parse_budget(budget_str: str) -> int:
     """Convert budget string to integer"""
@@ -32,39 +32,7 @@ def generate_itinerary(destination: str, duration: str, preferences: list, budge
     total_budget = parse_budget(budget)
     budget_tier = "luxury" if total_budget > 5000 else "budget" if total_budget < 2000 else "mid"
     
-    # Old fallback activity database (if Places API fails)
-    activity_db = {
-        "luxury": [
-            {"name": "Private yacht tour", "cost": "$500"},
-            {"name": "Michelin star dining", "cost": "$300"},
-            {"name": "VIP museum access", "cost": "$100"}
-        ],
-        "budget": [
-            {"name": "Free walking tour", "cost": "$0"},
-            {"name": "Street food market", "cost": "$20"},
-            {"name": "Public park picnic", "cost": "$10"}
-        ],
-        "adventure": [
-            {"name": "Hiking excursion", "cost": "$50"},
-            {"name": "Scuba diving", "cost": "$150"},
-            {"name": "Rock climbing", "cost": "$80"}
-        ],
-        "food": [
-            {"name": "Cooking class", "cost": "$100"},
-            {"name": "Food tasting tour", "cost": "$80"},
-            {"name": "Wine tasting", "cost": "$60"}
-        ],
-        "culture": [
-            {"name": "Historical landmark tour", "cost": "$40"},
-            {"name": "Local museum visit", "cost": "$30"},
-            {"name": "Traditional dance show", "cost": "$70"}
-        ]
-    }
-    
-    itinerary = []
-    used_activities = set()
-    
-    # Get real places from mock Places API
+    # Get real places from mock Places API + free APIs
     places_activities = []
     if API_AVAILABLE:
         for pref in preferences:
@@ -76,39 +44,48 @@ def generate_itinerary(destination: str, duration: str, preferences: list, budge
                     "name": f"{place['name']} ({price_symbols}, ⭐{rating})",
                     "cost": f"${place.get('price_level', 2) * 30}",
                     "location": place.get('location', {}),
-                    "address": place.get('address', '')
+                    "address": place.get('address', ''),
+                    "description": place.get('description', ''),
+                    "image": place.get('image', '')
                 })
     
-    # Fallback to old database if no places found
+    # Fallback if no places found
     if not places_activities:
-        primary_pref = preferences[0] if preferences else "culture"
-        places_activities = activity_db.get(primary_pref, activity_db["culture"])
+        fallback_activities = [
+            {"name": "Explore city center", "cost": "$0", "location": {}, "address": destination, "description": "", "image": ""},
+            {"name": "Local market visit", "cost": "$20", "location": {}, "address": destination, "description": "", "image": ""},
+            {"name": "Historical landmark tour", "cost": "$40", "location": {}, "address": destination, "description": "", "image": ""}
+        ]
+        places_activities = fallback_activities
+    
+    itinerary = []
+    used_activities = set()
     
     for day in range(1, days + 1):
         day_activities = []
         
         # Morning (Free/Light)
-        day_activities.append({"name": "Breakfast at local café", "cost": "$15"})
+        day_activities.append({"name": "Breakfast at local café", "cost": "$15", "location": {}, "address": "", "description": "", "image": ""})
         
         # Main Activity 1 (Unique)
         for _ in range(10):
-            act = random.choice(places_activities) if places_activities else {"name": "Explore city", "cost": "$0"}
-            if isinstance(act, dict) and act.get("name", "") not in used_activities:
+            act = random.choice(places_activities)
+            if act.get("name", "") not in used_activities:
                 used_activities.add(act["name"])
                 day_activities.append(act)
                 break
         else:
-            day_activities.append({"name": "Free time exploration", "cost": "$0"})
+            day_activities.append({"name": "Free time exploration", "cost": "$0", "location": {}, "address": "", "description": "", "image": ""})
             
         # Main Activity 2 (Unique)
         for _ in range(10):
-            act = random.choice(places_activities) if places_activities else {"name": "Explore city", "cost": "$0"}
-            if isinstance(act, dict) and act.get("name", "") not in used_activities:
+            act = random.choice(places_activities)
+            if act.get("name", "") not in used_activities:
                 used_activities.add(act["name"])
                 day_activities.append(act)
                 break
         else:
-            day_activities.append({"name": "Leisure walk", "cost": "$0"})
+            day_activities.append({"name": "Leisure walk", "cost": "$0", "location": {}, "address": "", "description": "", "image": ""})
         
         # Get Weather for this day
         weather_note = "☁️ Weather data unavailable"
@@ -130,18 +107,26 @@ def generate_itinerary(destination: str, duration: str, preferences: list, budge
         }
         itinerary.append(day_plan)
     
+    # Get hotel recommendations
+    hotels = []
+    if API_AVAILABLE:
+        hotels = get_hotels(destination)
+    
     return {
         "destination": destination,
         "duration": duration,
         "budget_tier": budget_tier,
         "preferences_used": preferences,
         "itinerary": itinerary,
-        "estimated_total": f"${total_budget}"
+        "estimated_total": f"${total_budget}",
+        "hotels": hotels
     }
 
 def search_hotels(destination: str, budget: str) -> list:
-    """Mock hotel search"""
+    """Search for hotels in destination"""
+    if API_AVAILABLE:
+        return get_hotels(destination)
     return [
         {"name": "Grand Hotel", "price": "$200/night", "rating": 4.5},
         {"name": "Budget Stay", "price": "$80/night", "rating": 3.8}
-    
+    ]
